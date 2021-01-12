@@ -193,10 +193,15 @@ public class MASConsoleGUI {
             // print in output
             synchronized (output) {
                 try {
-                    if (output.getDocument().getLength() > 60000) {
-                        cleanConsole();
-                    }
-                    output.append(s);
+                    SwingUtilities.invokeLater(new Runnable() {
+                        public void run() {
+                            if (output.getDocument().getLength() > 60000) {
+                                cleanConsole();
+                            }
+                            output.append(s);
+                        }
+                    });
+                    //output.append(s);
                 } catch (IllegalArgumentException e) {
                 }
             }

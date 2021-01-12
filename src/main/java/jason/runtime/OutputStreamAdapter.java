@@ -4,6 +4,7 @@ package jason.runtime;
 import java.io.PrintStream;
 
 import javax.swing.JTextArea;
+import javax.swing.SwingUtilities;
 
 /** adapts an output print stream to a GUI interface (MasConsole or some JTextArea) */
 public class OutputStreamAdapter extends PrintStream {
@@ -38,13 +39,17 @@ public class OutputStreamAdapter extends PrintStream {
 
 
     void append(String s) {
-        if (masConsole != null) {
-            masConsole.append(s);
-        }
-        if (ta != null) {
-            ta.append(s);
-            ta.setCaretPosition(ta.getDocument().getLength());
-        }
+        SwingUtilities.invokeLater(new Runnable() {
+            public void run() {
+                if (masConsole != null) {
+                    masConsole.append(s);
+                }
+                if (ta != null) {
+                    ta.append(s);
+                    ta.setCaretPosition(ta.getDocument().getLength());
+                }
+            }
+        });
     }
 
     public void print(Object s) {

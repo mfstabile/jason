@@ -59,76 +59,81 @@ public class MASConsoleColorGUI extends MASConsoleGUI {
 
     @Override
     public void append(final String agName, String s) {
-        try {
-            Color c = null;
-            if (agName != null) {
-                c = agsColours.get(agName);
-                if (c == null) {
-                    c = MASColorTextPane.getNextAvailableColor();
-                    agsColours.put(agName, c);
-                }
-            }
-            if (!frame.isVisible()) {
-                frame.setVisible(true);
-            }
-            if (inPause) {
-                waitNotPause();
-            }
-            if (isTabbed() && agName != null) {
-                MASColorTextPane ta = agsTextArea.get(agName);
-                if (ta == null) {
-                    // add new tab for the agent
-                    ta = new MASColorTextPane(Color.black);
-                    ta.setEditable(false);
-                    ((DefaultCaret)ta.getCaret()).setUpdatePolicy(DefaultCaret.ALWAYS_UPDATE);
-                    final MASColorTextPane cta = ta;
-                    SwingUtilities.invokeAndWait(new Runnable() {
-                        public void run() {
-                            agsTextArea.put(agName, cta);
-                            int i = 0;
-                            for (; i<tabPane.getTabCount(); i++) {
-                                if (agName.toUpperCase().compareTo( tabPane.getTitleAt(i).toUpperCase()) < 0)
-                                    break;
-                            }
-                            tabPane.add(new JScrollPane(cta),i);
-                            tabPane.setTitleAt(i, agName);
-                        }
-                    });
-                }
-                if (ta != null) {
-                    // print out
-                    if (ta.getDocument().getLength() > 100000) {
-                        ta.setText("");
-                    }
-                    ta.append(s);
-                }
-            }
+        SwingUtilities.invokeLater(new Runnable() {
+            public void run() {
 
-            // print in output
-            synchronized (output) {
-                if (output.getDocument().getLength() > 60000) {
-                    cleanConsole();
-                }
                 try {
-                    output.append(c, s);
-                } catch (Throwable e) {
-                    // just try again once...
+                    Color c = null;
+                    if (agName != null) {
+                        c = agsColours.get(agName);
+                        if (c == null) {
+                            c = MASColorTextPane.getNextAvailableColor();
+                            agsColours.put(agName, c);
+                        }
+                    }
+                    if (!frame.isVisible()) {
+                        frame.setVisible(true);
+                    }
+                    if (inPause) {
+                        waitNotPause();
+                    }
+                    if (isTabbed() && agName != null) {
+                        MASColorTextPane ta = agsTextArea.get(agName);
+                        if (ta == null) {
+                            // add new tab for the agent
+                            ta = new MASColorTextPane(Color.black);
+                            ta.setEditable(false);
+                            ((DefaultCaret)ta.getCaret()).setUpdatePolicy(DefaultCaret.ALWAYS_UPDATE);
+                            final MASColorTextPane cta = ta;
+                            //SwingUtilities.invokeAndWait(new Runnable() {
+                              //  public void run() {
+                                    agsTextArea.put(agName, cta);
+                                    int i = 0;
+                                    for (; i<tabPane.getTabCount(); i++) {
+                                        if (agName.toUpperCase().compareTo( tabPane.getTitleAt(i).toUpperCase()) < 0)
+                                            break;
+                                    }
+                                    tabPane.add(new JScrollPane(cta),i);
+                                    tabPane.setTitleAt(i, agName);
+                             //   }
+                           // });
+                        }
+                        if (ta != null) {
+                            // print out
+                            if (ta.getDocument().getLength() > 100000) {
+                                ta.setText("");
+                            }
+                            ta.append(s);
+                        }
+                    }
+
+                    // print in output
+                    synchronized (output) {
+                        if (output.getDocument().getLength() > 60000) {
+                            cleanConsole();
+                        }
+                        try {
+                            output.append(c, s);
+                        } catch (Throwable e) {
+                            // just try again once...
+                            try {
+                                output.append(c, s);
+                            } catch (Throwable e2) { }
+                        }
+                    }
+                } catch (Exception e) {
                     try {
-                        output.append(c, s);
-                    } catch (Throwable e2) { }
+                        PrintWriter out = new PrintWriter(new FileWriter("e_r_r_o_r.txt"));
+                        out.write("Error that can not be printed in the MAS Console!\n"+e.toString()+"\n");
+                        e.printStackTrace(out);
+                        out.close();
+                    } catch (IOException e1) {
+                    }
                 }
+                
             }
-        } catch (InterruptedException e) {
-            // ignore, system going down
-        } catch (Exception e) {
-            try {
-                PrintWriter out = new PrintWriter(new FileWriter("e_r_r_o_r.txt"));
-                out.write("Error that can not be printed in the MAS Console!\n"+e.toString()+"\n");
-                e.printStackTrace(out);
-                out.close();
-            } catch (IOException e1) {
-            }
-        }
+        });
+        
     }
 
 }
