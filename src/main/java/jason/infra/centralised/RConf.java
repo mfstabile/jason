@@ -5,7 +5,8 @@ public enum RConf {
     POOL_SYNCH("pool"),
     POOL_SYNCH_SCHEDULED("synch_scheduled"),
     ASYNCH("asynch"),
-    ASYNCH_SHARED_POOLS("asynch_shared");
+    ASYNCH_SHARED_POOLS("asynch_shared"),
+    ANYTIME_ASYNCH("anytime_asynch");
 
     private String text;
 

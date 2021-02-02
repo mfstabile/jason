@@ -793,6 +793,7 @@ public class Agent implements Serializable {
         for b in BBPercept (the set of perceptions already in BB) // 1n
             if b not in percepts // constant time test
                 remove b in BBPercept // constant time
+            else
                 remove b in percept
 
         for p still in percepts // 1n
@@ -806,7 +807,6 @@ public class Agent implements Serializable {
         // stat
         int adds = 0;
         int dels = 0;
-        //long startTime = qProfiling == null ? 0 : System.nanoTime();
 
         // to copy percepts allows the use of contains below
         Set<StructureWrapperForLiteral> perW = new HashSet<>();
@@ -837,53 +837,6 @@ public class Agent implements Serializable {
             }
         }
 
-        /*
-            ////// previous version, without perW hashset
-            // could not use percepts.contains(l), since equalsAsTerm must be
-            // used (to ignore annotations)
-            boolean wasPerceived = false;
-            Iterator<Literal> ip = percepts.iterator();
-            while (ip.hasNext()) {
-                Literal t = ip.next();
-
-                // if perception t is already in BB
-                if (l.equalsAsStructure(t) && l.negated() == t.negated()) {
-                    wasPerceived = true;
-                    // remove in percepts, since it already is in BB
-                    // [can not be always removed, since annots in this percepts should be added in BB
-                    //  Jason team for AC, for example, use annots in perceptions]
-                    if (!l.hasAnnot())
-                        ip.remove();
-                    break;
-                }
-            }
-            if (!wasPerceived) {
-                dels++;
-                // new version (it is sure that l is in BB, only clone l when the event is relevant)
-                perceptsInBB.remove(); // remove l as perception from BB
-
-                Trigger te = new Trigger(TEOperator.del, TEType.belief, l);
-                if (ts.getC().hasListener() || pl.hasCandidatePlan(te)) {
-                    l = l.copy();
-                    l.clearAnnots();
-                    l.addAnnot(BeliefBase.TPercept);
-                    te.setLiteral(l);
-                    ts.getC().addEvent(new Event(te, Intention.EmptyInt));
-                }
-        */
-        /*
-        // even older version
-        // can not delete l, but l[source(percept)]
-        l = (Literal)l.clone();
-        l.clearAnnots();
-        l.addAnnot(BeliefBase.TPercept);
-        if (bb.remove(l)) {
-            ts.updateEvents(new Event(new Trigger(TEOperator.del, TEType.belief, l), Intention.EmptyInt));
-        }
-        */
-        //}
-        //}
-
         for (StructureWrapperForLiteral lw: perW) {
             try {
                 Literal lp = lw.getLiteral().copy().forceFullLiteralImpl();
@@ -897,22 +850,66 @@ public class Agent implements Serializable {
             }
         }
 
-        //if (qCache != null)
-        //    qCache.reset();
-        //if (qProfiling != null)
-        //    qProfiling.newUpdateCycle(getTS().getUserAgArch().getCycleNumber(), adds+dels, System.nanoTime()-startTime);
         return adds + dels;
     }
 
+    /** Anytime Belief Update Function: adds/removes percepts into belief base.
+     *
+     *  @return the number of changes (add + dels)
+     */
+    public int anytimeBUF(Collection<Literal> percepts) {
 
-    /*
-    public QueryCacheSimple getQueryCache() {
-        return qCache;
+         if (percepts == null) {
+            return 0;
+        }
+
+        // stat
+        int adds = 0;
+        int dels = 0;
+
+        Set<Literal> oldBBPercepts = ((DefaultBeliefBase)getBB()).getPerceptsSet();
+
+        ((DefaultBeliefBase)getBB()).clearPerceptsSet();
+
+        Iterator<Literal> perceptsIter = percepts.iterator();
+
+        while (perceptsIter.hasNext()) {
+            Literal l = perceptsIter.next();
+            //Test
+            l.addAnnot(BeliefBase.TPercept);
+            bb.add(l);
+            //End Test
+            if (oldBBPercepts.contains(l)) {
+                Literal lp = new StructureWrapperForLiteral(l).getLiteral().copy().forceFullLiteralImpl();
+                lp.addAnnot(BeliefBase.TPercept);
+                getBB().add(lp);
+                oldBBPercepts.remove(l);
+            } else {
+                //add new perceptions to BB
+                Literal lp = new StructureWrapperForLiteral(l).getLiteral().copy().forceFullLiteralImpl();
+                lp.addAnnot(BeliefBase.TPercept);
+                if (getBB().add(lp)) {
+                    adds++;
+                    ts.updateEvents(new Event(new Trigger(TEOperator.add, TEType.belief, lp), Intention.EmptyInt));
+                }
+            }
+        }
+
+        Iterator<Literal> perceptsInBB = oldBBPercepts.iterator();
+
+        while (perceptsInBB.hasNext()) {
+            Literal l = perceptsInBB.next();
+
+            dels++;
+            Trigger te = new Trigger(TEOperator.del, TEType.belief, l);
+            l = ASSyntax.createLiteral(l.getFunctor(), l.getTermsArray());
+            l.addAnnot(BeliefBase.TPercept);
+            te.setLiteral(l);
+            ts.getC().addEvent(new Event(te, Intention.EmptyInt));
+        }
+
+        return adds + dels;
     }
-    public QueryProfiling getQueryProfiling() {
-        return qProfiling;
-    }
-    */
 
     /**
      * Returns true if BB contains the literal <i>bel</i> (using unification to test).

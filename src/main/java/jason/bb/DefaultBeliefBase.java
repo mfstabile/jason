@@ -104,8 +104,16 @@ public class DefaultBeliefBase extends BeliefBase implements Serializable {
         //return ((Set<Literal>)percepts.clone()).iterator();
     }
 
-    Set<Literal> getPerceptsSet() {
+    public Set<Literal> getPerceptsSet() {
         return percepts;
+    }
+
+    public  void clearPerceptsSet() {
+        Iterator<Literal> perceptsInBB = getPercepts();
+        while (perceptsInBB.hasNext()) {
+            perceptsInBB.remove();
+        }
+        this.percepts = new HashSet<>();
     }
 
     @Override

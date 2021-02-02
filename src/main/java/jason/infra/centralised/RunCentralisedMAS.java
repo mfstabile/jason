@@ -518,6 +518,8 @@ public class RunCentralisedMAS extends BaseCentralisedMAS implements RunCentrali
                         agArch = new CentralisedAgArchSynchronousScheduled();
                     } else if  (agentConf == RConf.ASYNCH || agentConf == RConf.ASYNCH_SHARED_POOLS) {
                         agArch = new CentralisedAgArchAsynchronous();
+                    } else if  (agentConf == RConf.ANYTIME_ASYNCH) {
+                        agArch = new CentralisedAgArchAnytimeAsynchronous();
                     } else {
                         agArch = new CentralisedAgArch();
                     }

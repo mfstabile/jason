@@ -1462,6 +1462,7 @@ public class TransitionSystem implements Serializable {
         try {
             if (logger.isLoggable(Level.FINE)) logger.fine("Start sense");
 
+            //empty method
             C.resetSense();
 
             if (nrcslbr >= setts.nrcbp()) {
@@ -1541,106 +1542,68 @@ public class TransitionSystem implements Serializable {
         }
     }
 
-    /*
-    public boolean reasoningCycle() {
-        if (logger.isLoggable(Level.FINE)) logger.fine("Start new reasoning cycle");
-        getUserAgArch().reasoningCycleStarting();
-      */
-    /* used to find bugs (ignore)
-    int is = C.getIntentions().size();
-    int es = C.getEvents().size();
-    if (is+es != 4) {
-        logger.info("1****"+is+" "+es);
-        logger.info(C.toString());
+    public void anytimeSense() {
         try {
-            logger.info("======"+applyClrInt(C.SI));
-            logger.info("======"+C.SI.isFinished());
-            logger.info("======"+C.SI.getB());
-            //logger.info(""+getAg().getPL());
-        } catch (JasonException e) {
-            e.printStackTrace();
+            synchronized (C.syncApPlanSense) {
+                ag.buf(getAgArch().perceive());
+            }
+            getAgArch().checkMail();
+
+            stepSense = State.StartRC;
+            do {
+                applySemanticRuleSense();
+            } while (stepSense != State.SelEv && getAgArch().isRunning());
+
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "*** ERROR in the transition system (sense). "+C+"\nCreating a new C!", e);
+            C.create();
         }
-        logger.info("old 1"+pc1.toString());
-        logger.info("old 2"+pc2.toString());
-        logger.info("old 3"+pc3.toString());
-        logger.info("old 4"+pc4.toString());
-        System.exit(0);
-        return false;
     }
 
-    pc4 = pc3;
-    pc3 = pc2;
-    pc2 = pc1;
-    pc1 = C.clone();*/
-    /*
-         try {
-             C.reset();
+    public void anytimeDeliberate() {
+        try {
+            C.resetDeliberate();
 
-             // run tasks allocated to be performed in the begin of the cycle
-             Runnable r = taskForBeginOfCycle.poll();
-             while (r != null) {
-                 r.run();
-                 r = taskForBeginOfCycle.poll();
-             }
+            // run tasks allocated to be performed in the begin of the cycle
+            Runnable r = taskForBeginOfCycle.poll();
+            while (r != null) {
+                r.run(); //It is processed only things related to operations on goals/intentions resumed/suspended/finished It can be placed in the deliberate stage, but the problem is the sleep when the synchronous execution is adopted
+                r = taskForBeginOfCycle.poll();
+            }
 
-             if (nrcslbr >= setts.nrcbp()) {
-                 nrcslbr = 0;
-                 ag.buf(getUserAgArch().perceive());
-                 getUserAgArch().checkMail();
-             }
-             nrcslbr++; // counting number of cycles since last belief revision
+            stepDeliberate = State.SelEv;
+            do {
+                applySemanticRuleDeliberate();
+            } while (stepDeliberate != State.ProcAct && getAgArch().isRunning());
 
-             if (canSleep()) {
-                 if (!sleepingEvt) {
-                     sleepingEvt = true;
-                     if (ag.pl.getCandidatePlans(PlanLibrary.TE_JAG_SLEEPING) != null)
-                         C.addExternalEv(PlanLibrary.TE_JAG_SLEEPING);
-                 } else {
-                     getUserAgArch().sleep();
-                     return false;
-                 }
-             } else if (sleepingEvt) { // code to turn idleEvt false again
-                 if (C.hasMsg()) { // the agent has messages
-                     sleepingEvt = false;
-                 } else if (C.hasEvent()) {
-                     // check if there is an event in C.E not produced by idle intention
-                     for (Event e: C.getEvents()) {
-                         Intention i = e.getIntention();
-                         if ( !e.getTrigger().equals(PlanLibrary.TE_JAG_SLEEPING)
-                              ||
-                              (i != null && i.hasTrigger(PlanLibrary.TE_JAG_SLEEPING, new Unifier()))
-                            ) {
-                             sleepingEvt = false;
-                             break;
-                         }
-                     }
-                 }
-                 if (!sleepingEvt && ag.pl.getCandidatePlans(PlanLibrary.TE_JAG_AWAKING) != null) {
-                     C.addExternalEv(PlanLibrary.TE_JAG_AWAKING);
-                 }
-             }
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "*** ERROR in the transition system (deliberate). "+C+"\nCreating a new C!", e);
+            C.create();
+        }
+    }
 
-             step = State.StartRC;
-             do {
-                 if (!getUserAgArch().isRunning()) return false;
-                 applySemanticRule();
-             } while (step != State.StartRC);
+    public void anytimeAct() {
+        try {
+            C.resetAct();
 
-             ActionExec action = C.getAction();
-             if (action != null) {
-                 C.addPendingAction(action);
-                 // We need to send a wrapper for FA to the user so that add method then calls C.addFA (which control atomic things)
-                 getUserAgArch().act(action, C.getFeedbackActionsWrapper());
-             }
+            stepAct = State.ProcAct;
+            do {
+                applySemanticRuleAct();
+            } while (stepAct != State.StartRC && getAgArch().isRunning());
 
-         } catch (Exception e) {
-             logger.log(Level.SEVERE, "*** ERROR in the transition system. "+C+"\nCreating a new C!", e);
-             C.create();
-         }
 
-         return true;
-     }
-    */
+            ActionExec action = C.getAction();
+            if (action != null) {
+                C.addPendingAction(action);
+                // We need to send a wrapper for FA to the user so that add method then calls C.addFA (which control atomic things)
+                getAgArch().act(action); //, C.getFeedbackActionsWrapper());
+            }
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "*** ERROR in the transition system (act). "+C+"\nCreating a new C!", e);
+            C.create();
+        }
+    }
+
     // Auxiliary functions
     // (for Internal Actions to be able to access the configuration)
     public Agent getAg() {
