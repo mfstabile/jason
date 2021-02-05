@@ -859,7 +859,7 @@ public class Agent implements Serializable {
      */
     public int anytimeBUF(Collection<Literal> percepts) {
 
-         if (percepts == null) {
+        if (percepts == null) {
             return 0;
         }
 
@@ -867,7 +867,7 @@ public class Agent implements Serializable {
         int adds = 0;
         int dels = 0;
 
-        Set<Literal> oldBBPercepts = ((DefaultBeliefBase)getBB()).getPerceptsSet();
+        Set<Literal> oldBBPercepts = new HashSet<Literal>(((DefaultBeliefBase)getBB()).getPerceptsSet());
 
         ((DefaultBeliefBase)getBB()).clearPerceptsSet();
 
@@ -877,7 +877,6 @@ public class Agent implements Serializable {
             Literal l = perceptsIter.next();
             //Test
             l.addAnnot(BeliefBase.TPercept);
-            bb.add(l);
             //End Test
             if (oldBBPercepts.contains(l)) {
                 Literal lp = new StructureWrapperForLiteral(l).getLiteral().copy().forceFullLiteralImpl();

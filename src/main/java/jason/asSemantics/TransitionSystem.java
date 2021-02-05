@@ -1545,7 +1545,7 @@ public class TransitionSystem implements Serializable {
     public void anytimeSense() {
         try {
             synchronized (C.syncApPlanSense) {
-                ag.buf(getAgArch().perceive());
+                ag.anytimeBUF(getAgArch().perceive());
             }
             getAgArch().checkMail();
 

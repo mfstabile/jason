@@ -30,7 +30,7 @@ public class DefaultBeliefBase extends BeliefBase implements Serializable {
 
     private static final long serialVersionUID = 4189725430351480996L;
 
-    private static Logger logger = Logger.getLogger(DefaultBeliefBase.class.getSimpleName());
+    private Logger logger = Logger.getLogger(DefaultBeliefBase.class.getSimpleName());
 
     /**
      * belsMap is a table where the key is the bel.getFunctorArity and the value
@@ -52,6 +52,7 @@ public class DefaultBeliefBase extends BeliefBase implements Serializable {
     @Override
     public void init(Agent ag, String[] args) {
         if (ag != null) {
+            System.out.println("Creating BBlogger for " + ag.getTS().getAgArch().getAgName());
             logger = Logger.getLogger(ag.getTS().getAgArch().getAgName() + "-"+DefaultBeliefBase.class.getSimpleName());
         }
     }
@@ -109,8 +110,9 @@ public class DefaultBeliefBase extends BeliefBase implements Serializable {
     }
 
     public  void clearPerceptsSet() {
-        Iterator<Literal> perceptsInBB = getPercepts();
+        Iterator<Literal> perceptsInBB = this.getPercepts();
         while (perceptsInBB.hasNext()) {
+            perceptsInBB.next();
             perceptsInBB.remove();
         }
         this.percepts = new HashSet<>();
@@ -127,15 +129,19 @@ public class DefaultBeliefBase extends BeliefBase implements Serializable {
     }
 
     protected boolean add(Literal l, boolean addInEnd) {
+        logger.severe("Adding belief DefaultBB "+l.toString());
+//        System.out.println("Adding belief DefaultBB "+l.toString());
         if (!l.canBeAddedInBB()) {
             logger.log(Level.SEVERE, "Error: '"+l+"' can not be added in the belief base.");
             return false;
         }
-
+    System.out.println(toString());
         Literal bl = contains(l);
         if (bl != null && !bl.isRule()) {
+            logger.severe("entrou no if 1");
             // add only annots
             if (bl.importAnnots(l)) {
+                logger.severe("entrou no if 2");
                 // check if it needs to be added in the percepts list
                 // (note that l contains only the annots imported)
                 if (l.hasAnnot(TPercept)) {
@@ -143,9 +149,10 @@ public class DefaultBeliefBase extends BeliefBase implements Serializable {
                 }
                 return true;
             }
+            logger.severe("nao entrou no if 2");
         } else {
             // new bel
-
+            logger.severe("nao entrou no if 1");
             l = l.copy(); // we need to clone l for the consequent event to not have a ref to this bel (which may change before the event is processed); see bug from Viviana Marcardi
             BelEntry entry = provideBelEntry(l);
             entry.add(l, addInEnd);
@@ -158,6 +165,7 @@ public class DefaultBeliefBase extends BeliefBase implements Serializable {
             size++;
             return true;
         }
+        logger.severe("DefaultBB returning false");
         return false;
     }
 
