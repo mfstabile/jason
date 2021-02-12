@@ -54,6 +54,7 @@ public class CentralisedAgArchAnytimeAsynchronous extends CentralisedAgArch impl
     Callable<Boolean> actRunnable = () -> {act();return true;};
 
     ExecutorService executor = Executors.newFixedThreadPool(3);
+    ActionExec defaultAction;
 
     private static List<MsgListener> msgListeners = null;
     public static void addMsgListener(MsgListener l) {
@@ -182,6 +183,10 @@ public class CentralisedAgArchAnytimeAsynchronous extends CentralisedAgArch impl
         return infraControl;
     }
 
+    public void setDefaultAction(ActionExec defaultAction) {
+        this.defaultAction = defaultAction;
+    }
+
     private transient Thread myThread = null;
     public void setThread(Thread t) {
         myThread = t;
@@ -257,6 +262,9 @@ public class CentralisedAgArchAnytimeAsynchronous extends CentralisedAgArch impl
                 // We need to send a wrapper for FA to the user so that add method then calls C.addFA (which control atomic things)
                 act(action);
             }
+//            else{
+//                act(defaultAction);
+//            }
 
         } catch (InterruptedException e) {
             e.printStackTrace();

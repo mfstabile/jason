@@ -37,10 +37,10 @@ import javax.swing.JTextField;
 
 import jason.JasonException;
 import jason.architecture.AgArch;
+import jason.asSemantics.ActionExec;
 import jason.asSemantics.Agent;
-import jason.asSyntax.NumberTermImpl;
-import jason.asSyntax.PlanLibrary;
-import jason.asSyntax.Trigger;
+import jason.asSemantics.Intention;
+import jason.asSyntax.*;
 import jason.asSyntax.directives.DirectiveProcessor;
 import jason.asSyntax.directives.Include;
 import jason.bb.DefaultBeliefBase;
@@ -570,7 +570,10 @@ public class RunCentralisedMAS extends BaseCentralisedMAS implements RunCentrali
         // run the agents
         if (project.getInfrastructure().hasParameter("pool") || project.getInfrastructure().hasParameter("synch_scheduled") || project.getInfrastructure().hasParameter("asynch") || project.getInfrastructure().hasParameter("asynch_shared")) {
             createThreadPool();
-        } else {
+        } else if(project.getInfrastructure().hasParameter("anytime_asynch")){
+            createAnytimeAgsThreads();
+        }
+        else {
             createAgsThreads();
         }
     }
@@ -606,6 +609,52 @@ public class RunCentralisedMAS extends BaseCentralisedMAS implements RunCentrali
             Thread agThread = new Thread(ag);
             ag.setThread(agThread);
         }
+
+        //logger.info("Creating threaded agents. Cycles: " + agTemp.getCyclesSense() + ", " + agTemp.getCyclesDeliberate() + ", " + agTemp.getCyclesAct());
+
+        for (CentralisedAgArch ag : ags.values()) {
+            ag.startThread();
+        }
+    }
+
+    /** creates one thread per agent */
+    private void createAnytimeAgsThreads() {
+        System.out.println("Creating Anytime Agents");
+
+        if (project.getInfrastructure().hasParameters()) {
+            if (project.getInfrastructure().getParametersArray().length > 2) {
+//                cyclesSense      = Integer.parseInt(project.getInfrastructure().getParameter(1));
+//                cyclesDeliberate = Integer.parseInt(project.getInfrastructure().getParameter(2));
+//                cyclesAct        = Integer.parseInt(project.getInfrastructure().getParameter(3));
+            } else if (project.getInfrastructure().getParametersArray().length > 1) {
+//                cyclesSense = cyclesDeliberate = cyclesAct = Integer.parseInt(project.getInfrastructure().getParameter(1));
+            }
+        }
+
+        for (CentralisedAgArch ag : ags.values()) {
+            ag.setControlInfraTier(control);
+
+            // if the agent hasn't override the values for cycles, use the platform values
+            ag.setCyclesSense(1);
+            ag.setCyclesDeliberate(1);
+            ag.setCyclesAct(1);
+
+            // create the agent thread
+            Thread agThread = new Thread(ag);
+            ag.setThread(agThread);
+
+            try {
+                Term def = ag.getTS().getAg().getPL().get("default").getBody().getBodyTerm();
+
+                Literal body = (Literal) def;
+                Intention curInt = new Intention();
+                ActionExec ae = new ActionExec(body, curInt);
+                ((CentralisedAgArchAnytimeAsynchronous) ag).setDefaultAction(ae);
+            }catch (Exception e){
+                logger.log(Level.SEVERE, ag.getAgName() + " - Default action not loaded correctly");
+            }
+        }
+
 
         //logger.info("Creating threaded agents. Cycles: " + agTemp.getCyclesSense() + ", " + agTemp.getCyclesDeliberate() + ", " + agTemp.getCyclesAct());
 

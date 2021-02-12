@@ -1,5 +1,7 @@
 last_order_id(1). // initial belief
 
+@default +default<- wait.
+
 // plan to achieve the goal "order" for agent Ag
 +!order(Product,Qtd)[source(Ag)] : true
   <- ?last_order_id(N);

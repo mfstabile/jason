@@ -14,6 +14,7 @@ too_much(B) :-
 
 
 /* Plans */
+@default +default<- wait.
 
 +!has(owner,beer)
    :  available(beer,fridge) & not too_much(beer)

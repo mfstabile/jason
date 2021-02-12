@@ -3,6 +3,8 @@
 !get(beer).   // initial goal: get a beer
 !check_bored. // initial goal: verify whether I am getting bored
 
+@default +default<- wait.
+
 +!get(beer) : true
    <- .send(robot, achieve, has(owner,beer)).
 
