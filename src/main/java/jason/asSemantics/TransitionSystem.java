@@ -45,6 +45,7 @@ import jason.asSyntax.UnnamedVar;
 import jason.asSyntax.VarTerm;
 import jason.asSyntax.parser.ParseException;
 import jason.bb.BeliefBase;
+import jason.infra.centralised.CentralisedAgArchAnytimeAsynchronous;
 import jason.runtime.Settings;
 import jason.stdlib.add_nested_source;
 import jason.stdlib.desire;
@@ -56,7 +57,7 @@ public class TransitionSystem implements Serializable {
 
     private static final long serialVersionUID = -5166620620196199391L;
 
-    public enum State { StartRC, SelEv, RelPl, ApplPl, SelAppl, FindOp, AddIM, ProcAct, SelInt, ExecInt, ClrInt }
+    public enum State { StartRC, DelibBegin ,SelEv, RelPl, ApplPl, SelAppl, FindOp, AddIM, ProcAct, SelInt, ExecInt, ClrInt }
 
     private transient Logger logger     = null;
 
@@ -70,6 +71,7 @@ public class TransitionSystem implements Serializable {
     private State         stepDeliberate  = State.SelEv;
     private State         stepAct         = State.ProcAct;
 
+    private int           iterAct = 0;
 
     private int           nrcslbr         = Settings.ODefaultNRC; // number of reasoning cycles since last belief revision
 
@@ -208,6 +210,9 @@ public class TransitionSystem implements Serializable {
 
     private void applySemanticRuleDeliberate() throws JasonException {
         switch (stepDeliberate) {
+        case DelibBegin:
+            applyDelibBegin();
+            break;
         case SelEv:
             applySelEv();
             break;
@@ -234,6 +239,7 @@ public class TransitionSystem implements Serializable {
     private void applySemanticRuleAct() throws JasonException {
         switch (stepAct) {
         case ProcAct:
+            C.resetAct();
             applyProcAct();
             break;
         case SelInt:
@@ -397,6 +403,18 @@ public class TransitionSystem implements Serializable {
             generateGoalDeletion(i, JasonException.createBasicErrorAnnots("ask_failed", "reply of an ask message ('"+answerValue+"') does not unify with fourth argument of .send ('"+answerVar+"')"), ASSyntax.createAtom("ask_failed"));
         }
 
+    }
+
+    private void applyDelibBegin() throws  JasonException {
+        C.resetDeliberate();
+
+        // run tasks allocated to be performed in the begin of the cycle
+        Runnable r = taskForBeginOfCycle.poll();
+        while (r != null) {
+            r.run(); //It is processed only things related to operations on goals/intentions resumed/suspended/finished It can be placed in the deliberate stage, but the problem is the sleep when the synchronous execution is adopted
+            r = taskForBeginOfCycle.poll();
+        }
+        stepDeliberate = State.SelEv;
     }
 
     private void applySelEv() throws JasonException {
@@ -771,7 +789,15 @@ public class TransitionSystem implements Serializable {
         // Rule Action
         case action:
             body = (Literal)body.capply(u);
-            C.A = new ActionExec(body, curInt);
+            if (agArch instanceof CentralisedAgArchAnytimeAsynchronous) {
+                ActionExec ae = new ActionExec(body, curInt, iterAct);
+                C.APQ.add(new DelayedAction(ae, curInt));
+                stepAct = State.StartRC;
+//                LOG.info("Yes-----Executing action " + h + "<->" + body );
+            }else {
+//                LOG.info("WRONG_-_-_Executing action " + h + "<->" + body );
+                C.A = new ActionExec(body, curInt);
+            }
             break;
 
         case internalAction:
@@ -1549,10 +1575,9 @@ public class TransitionSystem implements Serializable {
             }
             getAgArch().checkMail();
 
-            stepSense = State.StartRC;
-            do {
+            while (resumeSense() && getAgArch().isRunning()) {
                 applySemanticRuleSense();
-            } while (stepSense != State.SelEv && getAgArch().isRunning());
+            }
 
         } catch (Exception e) {
             logger.log(Level.SEVERE, "*** ERROR in the transition system (sense). "+C+"\nCreating a new C!", e);
@@ -1560,21 +1585,19 @@ public class TransitionSystem implements Serializable {
         }
     }
 
+    public boolean resumeSense(){
+        if (stepSense == State.SelEv){
+            stepSense = State.StartRC;
+            return false;
+        }
+        return true;
+    }
+
     public void anytimeDeliberate() {
         try {
-            C.resetDeliberate();
-
-            // run tasks allocated to be performed in the begin of the cycle
-            Runnable r = taskForBeginOfCycle.poll();
-            while (r != null) {
-                r.run(); //It is processed only things related to operations on goals/intentions resumed/suspended/finished It can be placed in the deliberate stage, but the problem is the sleep when the synchronous execution is adopted
-                r = taskForBeginOfCycle.poll();
-            }
-
-            stepDeliberate = State.SelEv;
             do {
                 applySemanticRuleDeliberate();
-            } while (stepDeliberate != State.ProcAct && getAgArch().isRunning());
+            } while (resumeDeliberate() && getAgArch().isRunning());
 
         } catch (Exception e) {
             logger.log(Level.SEVERE, "*** ERROR in the transition system (deliberate). "+C+"\nCreating a new C!", e);
@@ -1582,26 +1605,40 @@ public class TransitionSystem implements Serializable {
         }
     }
 
+    private boolean resumeDeliberate(){
+        if (stepDeliberate == State.ProcAct){
+            stepDeliberate = State.DelibBegin;
+            return false;
+        }
+        return true;
+    }
+
     public void anytimeAct() {
         try {
-            C.resetAct();
-
-            stepAct = State.ProcAct;
             do {
                 applySemanticRuleAct();
-            } while (stepAct != State.StartRC && getAgArch().isRunning());
+            } while (resumeAct() && getAgArch().isRunning());
 
-
-            ActionExec action = C.getAction();
-            if (action != null) {
-                C.addPendingAction(action);
-                // We need to send a wrapper for FA to the user so that add method then calls C.addFA (which control atomic things)
-                getAgArch().act(action); //, C.getFeedbackActionsWrapper());
-            }
+//            DelayedAction da = C.getAPQ().poll();
+//            if (da != null) {
+//                ActionExec action = da.getAction();
+//
+//                C.addPendingAction(action);
+//                // We need to send a wrapper for FA to the user so that add method then calls C.addFA (which control atomic things)
+//                getAgArch().act(action);
+//            }
         } catch (Exception e) {
             logger.log(Level.SEVERE, "*** ERROR in the transition system (act). "+C+"\nCreating a new C!", e);
             C.create();
         }
+    }
+
+    private boolean resumeAct(){
+        if (stepAct == State.StartRC){
+            stepAct = State.ProcAct;
+            return false;
+        }
+        return true;
     }
 
     // Auxiliary functions

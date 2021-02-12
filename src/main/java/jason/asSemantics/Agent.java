@@ -873,7 +873,7 @@ public class Agent implements Serializable {
 
         Iterator<Literal> perceptsIter = percepts.iterator();
 
-        while (perceptsIter.hasNext()) {
+        while (perceptsIter.hasNext() && ts.resumeSense()) {
             Literal l = perceptsIter.next();
             //Test
             l.addAnnot(BeliefBase.TPercept);
@@ -896,7 +896,7 @@ public class Agent implements Serializable {
 
         Iterator<Literal> perceptsInBB = oldBBPercepts.iterator();
 
-        while (perceptsInBB.hasNext()) {
+        while (perceptsInBB.hasNext() && ts.resumeSense()) {
             Literal l = perceptsInBB.next();
 
             dels++;

@@ -3,12 +3,7 @@ package jason.asSemantics;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -31,6 +26,7 @@ public class Circumstance implements Serializable {
     private   Queue<Event>             E;
     private   Queue<Intention>         I;
     protected ActionExec               A;
+    protected PriorityQueue<DelayedAction> APQ;
     private   Queue<Message>           MB;
     protected List<Option>             RP;
     protected List<Option>             AP;
@@ -79,6 +75,7 @@ public class Circumstance implements Serializable {
         PI = new ConcurrentHashMap<>();
         PE = new ConcurrentHashMap<>();
         FA = new ConcurrentLinkedQueue<>();
+        APQ = new PriorityQueue<DelayedAction>();
     }
 
     /** set null for A, RP, AP, SE, SO, and SI */
@@ -874,6 +871,10 @@ public class Circumstance implements Serializable {
 
     public Option getSelectedOption() {
         return SO;
+    }
+
+    public PriorityQueue<DelayedAction> getAPQ() {
+        return APQ;
     }
 
     /** clone E, I, MB, PA, PI, FA, and AI */

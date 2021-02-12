@@ -19,11 +19,19 @@ public class ActionExec implements Serializable {
     private boolean   result;
     private Literal   failureReason;
     private String    failureMsg;
+    private int       iterCreated;
 
     public ActionExec(Literal ac, Intention i) {
         action = ac;
         intention = i;
         result = false;
+    }
+
+    public ActionExec(Literal ac, Intention i, int ic) {
+        action = ac;
+        intention = i;
+        result = false;
+        iterCreated = ic;
     }
 
     @Override
@@ -84,5 +92,33 @@ public class ActionExec implements Serializable {
         eact.setAttribute("result", result+"");
         eact.setAttribute("intention", intention.getId()+"");
         return eact;
+    }
+
+    public Literal getAction() {
+        return action;
+    }
+
+    public int compareTo(ActionExec o) {
+        //valor menor significa que vai primeiro => mais relevante
+        try {
+            Literal p1 = action.getAnnot("priority");
+            Literal p2 = o.getAction().getAnnot("priority");
+
+            if (p1 == null && p2 != null) {
+                return 1;
+            }else if(p1 != null && p2 == null) {
+                return -1;
+            }else if(p1 != null && p2 != null) {
+                int comp = p1.toString().compareTo(p2.toString());
+                if(comp != 0) {
+                    return -1*comp;
+                }
+            }
+
+            return iterCreated - o.iterCreated;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 0;
+        }
     }
 }

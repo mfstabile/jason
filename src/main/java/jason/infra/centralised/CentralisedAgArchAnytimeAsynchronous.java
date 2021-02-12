@@ -207,19 +207,14 @@ public class CentralisedAgArchAnytimeAsynchronous extends CentralisedAgArch impl
         } while (running && ++i < cyclesSense && !ts.canSleepSense());
     }
 
-    //int sumDel = 0; int nbDel = 0;
     protected void deliberate() {
         TransitionSystem ts = getTS();
         int i = 0;
         while (running && i++ < cyclesDeliberate && !ts.canSleepDeliberate()) {
             ts.anytimeDeliberate();
         }
-        //sumDel += i; nbDel++;
-        //System.out.println("running del "+(sumDel/nbDel)+"/"+cyclesDeliberate);
     }
 
-    /** the act as step of reasoning cycle */
-    //int sumAct = 0; int nbAct = 0;
     protected void act() {
         TransitionSystem ts = getTS();
 
@@ -233,8 +228,6 @@ public class CentralisedAgArchAnytimeAsynchronous extends CentralisedAgArch impl
         while (running && i++ < ca && !ts.canSleepAct()) {
             ts.anytimeAct();
         }
-        //sumAct += i; nbAct++;
-        //System.out.println("running act "+(sumAct/nbAct)+"/"+ca);
     }
 
     protected void reasoningCycle() {
@@ -255,6 +248,16 @@ public class CentralisedAgArchAnytimeAsynchronous extends CentralisedAgArch impl
             future.get();
             future2.get();
             future3.get();
+
+            DelayedAction da = getTS().getC().getAPQ().poll();
+            if (da != null) {
+                ActionExec action = da.getAction();
+
+                getTS().getC().addPendingAction(action);
+                // We need to send a wrapper for FA to the user so that add method then calls C.addFA (which control atomic things)
+                act(action);
+            }
+
         } catch (InterruptedException e) {
             e.printStackTrace();
         } catch (ExecutionException e) {
@@ -380,7 +383,7 @@ public class CentralisedAgArchAnytimeAsynchronous extends CentralisedAgArch impl
     public void checkMail() {
         Circumstance C = getTS().getC();
         Message im = mbox.poll();
-        while (im != null) {
+        while (im != null && getTS().resumeSense()) {
             C.addMsg(im);
             if (logger.isLoggable(Level.FINE)) logger.fine("received message: " + im);
             im = mbox.poll();
