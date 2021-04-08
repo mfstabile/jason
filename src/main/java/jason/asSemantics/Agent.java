@@ -27,6 +27,7 @@ import java.util.logging.Logger;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
+import jason.infra.anytimeStructures.PerceptionFilterController;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -76,6 +77,7 @@ public class Agent implements Serializable {
     protected PlanLibrary      pl = null;
     protected TransitionSystem ts = null;
     protected String           aslSource = null;
+    protected PerceptionFilterController pfc = null;
 
     private List<Literal>      initialGoals = null; // initial goals in the source code
     private List<Literal>      initialBels  = null; // initial beliefs in the source code
@@ -108,6 +110,8 @@ public class Agent implements Serializable {
         //try {
             Agent ag = (Agent) Class.forName(agClass).getConstructor().newInstance();
 
+            ag.pfc = new PerceptionFilterController();
+
             new TransitionSystem(ag, null, stts, arch);
 
             BeliefBase bb = null;
@@ -132,6 +136,7 @@ public class Agent implements Serializable {
     public void initAg() {
         if (bb == null) bb = new DefaultBeliefBase();
         if (pl == null) pl = new PlanLibrary();
+        if (pfc == null)pfc= new PerceptionFilterController();
 
         if (initialGoals == null) initialGoals = new ArrayList<>();
         if (initialBels  == null) initialBels  = new ArrayList<>();
@@ -875,9 +880,7 @@ public class Agent implements Serializable {
 
         while (perceptsIter.hasNext() && ts.resumeSense()) {
             Literal l = perceptsIter.next();
-            //Test
             l.addAnnot(BeliefBase.TPercept);
-            //End Test
             if (oldBBPercepts.contains(l)) {
                 Literal lp = new StructureWrapperForLiteral(l).getLiteral().copy().forceFullLiteralImpl();
                 lp.addAnnot(BeliefBase.TPercept);
@@ -906,6 +909,94 @@ public class Agent implements Serializable {
             te.setLiteral(l);
             ts.getC().addEvent(new Event(te, Intention.EmptyInt));
         }
+
+        return adds + dels;
+    }
+
+    /** Anytime Belief Update Function with Profiling capabilities: adds/removes percepts into belief base.
+     *
+     *  @return the number of changes (add + dels)
+     */
+    public int anytimeBUFProfiler(Collection<Literal> percepts) {
+
+        int updatedPercepts = 0;
+        int createdEvents = 0;
+
+        if (percepts == null) {
+            return 0;
+        }
+
+        // stat
+        int adds = 0;
+        int dels = 0;
+
+        long begin = System.nanoTime();
+
+        Set<Literal> oldBBPercepts = new HashSet<Literal>(((DefaultBeliefBase)getBB()).getPerceptsSet());
+        int clearedPercepts = ((DefaultBeliefBase)getBB()).clearPerceptsSet();
+
+        //        Iterator<Literal> perceptsIter = percepts.iterator();
+        pfc.setPerceptions(percepts);
+
+
+
+        long time = System.nanoTime() - begin;
+        getTS().anytimeProfiler.addTime("clearPercepts", time);
+        getTS().anytimeProfiler.addOccurrence("clearedPercepts", clearedPercepts);
+
+
+        while (pfc.hasNext() && ts.resumeSense()) {
+
+            begin = System.nanoTime();
+
+            updatedPercepts++;
+//            Literal l = perceptsIter.next();
+            Literal l = pfc.getPerception();
+            l.addAnnot(BeliefBase.TPercept);
+            if (oldBBPercepts.contains(l)) {
+                Literal lp = new StructureWrapperForLiteral(l).getLiteral().copy().forceFullLiteralImpl();
+                lp.addAnnot(BeliefBase.TPercept);
+                getBB().add(lp);
+                oldBBPercepts.remove(l);
+            } else {
+                //add new perceptions to BB
+                Literal lp = new StructureWrapperForLiteral(l).getLiteral().copy().forceFullLiteralImpl();
+                lp.addAnnot(BeliefBase.TPercept);
+                if (getBB().add(lp)) {
+                    adds++;
+                    ts.updateEvents(new Event(new Trigger(TEOperator.add, TEType.belief, lp), Intention.EmptyInt));
+                    createdEvents++;
+                }
+            }
+
+            time = System.nanoTime() - begin;
+            getTS().anytimeProfiler.addTime("percept", time);
+
+        }
+
+        Iterator<Literal> perceptsInBB = oldBBPercepts.iterator();
+
+        while (perceptsInBB.hasNext() && ts.resumeSense()) {
+
+            begin = System.nanoTime();
+
+            Literal l = perceptsInBB.next();
+            dels++;
+            Trigger te = new Trigger(TEOperator.del, TEType.belief, l);
+            l = ASSyntax.createLiteral(l.getFunctor(), l.getTermsArray());
+            l.addAnnot(BeliefBase.TPercept);
+            te.setLiteral(l);
+            ts.getC().addEvent(new Event(te, Intention.EmptyInt));
+
+            time = System.nanoTime() - begin;
+            createdEvents++;
+            updatedPercepts++;
+            getTS().anytimeProfiler.addTime("percept", time);
+        }
+
+        getTS().anytimeProfiler.addOccurrence("events",createdEvents);//TODO: events are also added by messages.
+        getTS().anytimeProfiler.addOccurrence("percepts",updatedPercepts);
+
 
         return adds + dels;
     }

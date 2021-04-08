@@ -46,6 +46,7 @@ import jason.asSyntax.VarTerm;
 import jason.asSyntax.parser.ParseException;
 import jason.bb.BeliefBase;
 import jason.infra.centralised.CentralisedAgArchAnytimeAsynchronous;
+import jason.profiling.AnytimeProfiler;
 import jason.runtime.Settings;
 import jason.stdlib.add_nested_source;
 import jason.stdlib.desire;
@@ -68,7 +69,7 @@ public class TransitionSystem implements Serializable {
     //private State         step       = State.StartRC; // first step of the SOS
 
     private State         stepSense       = State.StartRC;
-    private State         stepDeliberate  = State.SelEv;
+    private State         stepDeliberate  = State.DelibBegin;
     private State         stepAct         = State.ProcAct;
 
     private int           iterAct = 0;
@@ -80,6 +81,11 @@ public class TransitionSystem implements Serializable {
     private List<GoalListener>  goalListeners = null;
 
     private Queue<Runnable> taskForBeginOfCycle = new ConcurrentLinkedQueue<>();
+
+    private boolean resumeAnytimeExecution = false;
+    public boolean anytimeProfiling = true;
+    public AnytimeProfiler anytimeProfiler = null;
+    private int actionsUntilExternal = 0;
 
     public TransitionSystem(Agent a, Circumstance c, Settings s, AgArch ar) {
         ag     = a;
@@ -662,18 +668,22 @@ public class TransitionSystem implements Serializable {
     private void applyProcAct() throws JasonException {
         stepAct = State.SelInt; // default next step
         if (C.hasFeedbackAction()) { // suspended intentions are not considered
+//            logger.severe(" Found FeedbackAction");
             ActionExec a = null;
             synchronized (C.getFeedbackActions()) {
                 a = ag.selectAction(C.getFeedbackActions());
             }
             if (a != null) {
+//                logger.severe(" a is not null");
                 final Intention curInt = a.getIntention();
 
                 // remove the intention from PA (PA has all pending action, including those in FA;
                 // but, if the intention is not in PA, it means that the intention was dropped
                 // and should not return to I)
                 if (C.removePendingAction(curInt.getId()) != null) {
+//                    logger.severe(" removePendingAction");
                     if (a.getResult()) {
+//                        logger.severe(" a.getResult TRUE");
                         // add the intention back in I
                         removeActionReQueue(curInt);
                         applyClrInt(curInt);
@@ -683,6 +693,7 @@ public class TransitionSystem implements Serializable {
                                 for (IntendedMeans im: curInt) //.getIMs())
                                     gl.goalExecuting(im.getTrigger(), ASSyntax.createStructure("action_executed", a.getActionTerm()));
                     } else {
+//                        logger.severe(" a.getResult FALSE");
                         String reason = a.getFailureMsg();
                         if (reason == null) reason = "";
                         ListTerm annots = JasonException.createBasicErrorAnnots("action_failed", reason);
@@ -713,6 +724,7 @@ public class TransitionSystem implements Serializable {
             C.SI = ag.selectIntention(C.getRunningIntentions());
             if (logger.isLoggable(Level.FINE)) logger.fine("Selected intention "+C.SI);
             if (C.SI != null) { // the selectIntention function returned null
+//                logger.severe("Selected intention " + C.SI.toString());
                 return;
             }
         }
@@ -741,6 +753,8 @@ public class TransitionSystem implements Serializable {
             removeActionReQueue(curInt);
             return;
         }
+
+        actionsUntilExternal++;
         Unifier     u = im.unif;
         PlanBody    h = im.getCurrentStep();
 
@@ -793,7 +807,10 @@ public class TransitionSystem implements Serializable {
                 ActionExec ae = new ActionExec(body, curInt, iterAct);
                 C.APQ.add(new DelayedAction(ae, curInt));
                 stepAct = State.StartRC;
-//                LOG.info("Yes-----Executing action " + h + "<->" + body );
+                if (anytimeProfiling){
+                    anytimeProfiler.addOccurrence("action",actionsUntilExternal);
+                    actionsUntilExternal = 0;
+                }
             }else {
 //                LOG.info("WRONG_-_-_Executing action " + h + "<->" + body );
                 C.A = new ActionExec(body, curInt);
@@ -1568,17 +1585,48 @@ public class TransitionSystem implements Serializable {
         }
     }
 
+    public void setResumeAnytimeExecution(boolean resume){
+        resumeAnytimeExecution = resume;
+    }
+
     public void anytimeSense() {
         try {
+            do {
+                synchronized (C.syncApPlanSense) {
+                    ag.anytimeBUF(getAgArch().perceive());
+                }
+                getAgArch().checkMail();
+                while (resumeSense() && getAgArch().isRunning() && C.hasMsg()) {
+                    applySemanticRuleSense();
+                }
+            }while (resumeSense() && getAgArch().isRunning());
+
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "*** ERROR in the transition system (sense). "+C+"\nCreating a new C!", e);
+            C.create();
+        }
+    }
+
+    public void anytimeSenseProfiler() {
+        try {
             synchronized (C.syncApPlanSense) {
-                ag.anytimeBUF(getAgArch().perceive());
+                ag.anytimeBUFProfiler(getAgArch().perceive());
             }
+
+            int amount = C.getMsgAmount();
+            long begin = System.nanoTime();
             getAgArch().checkMail();
+            long time = System.nanoTime() - begin;
+            if(amount < C.getMsgAmount()){
+                anytimeProfiler.addTime("checkMail", time);
+            }
 
             while (resumeSense() && getAgArch().isRunning()) {
+                begin = System.nanoTime();
                 applySemanticRuleSense();
+                time = System.nanoTime() - begin;
+                anytimeProfiler.addTime("message", time);
             }
-
         } catch (Exception e) {
             logger.log(Level.SEVERE, "*** ERROR in the transition system (sense). "+C+"\nCreating a new C!", e);
             C.create();
@@ -1588,9 +1636,9 @@ public class TransitionSystem implements Serializable {
     public boolean resumeSense(){
         if (stepSense == State.SelEv){
             stepSense = State.StartRC;
-            return false;
+            if (anytimeProfiling) return false;
         }
-        return true;
+        return resumeAnytimeExecution;
     }
 
     public void anytimeDeliberate() {
@@ -1598,7 +1646,27 @@ public class TransitionSystem implements Serializable {
             do {
                 applySemanticRuleDeliberate();
             } while (resumeDeliberate() && getAgArch().isRunning());
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "*** ERROR in the transition system (deliberate). "+C+"\nCreating a new C!", e);
+            C.create();
+        }
+    }
 
+    public void anytimeDeliberateProfiler() {
+        try {
+            long totalTime = 0;
+            do {
+                State previous = stepDeliberate;
+                long begin = System.nanoTime();
+                applySemanticRuleDeliberate();
+                long time = System.nanoTime() - begin;
+                State after = stepDeliberate;
+                if (previous != State.SelEv || after != State.ProcAct){
+                    anytimeProfiler.addTime(previous.toString(), time);
+                    totalTime+=time;
+                }
+            } while (resumeDeliberate() && getAgArch().isRunning());
+            if(totalTime > 0) anytimeProfiler.addTime("event", totalTime);
         } catch (Exception e) {
             logger.log(Level.SEVERE, "*** ERROR in the transition system (deliberate). "+C+"\nCreating a new C!", e);
             C.create();
@@ -1608,9 +1676,9 @@ public class TransitionSystem implements Serializable {
     private boolean resumeDeliberate(){
         if (stepDeliberate == State.ProcAct){
             stepDeliberate = State.DelibBegin;
-            return false;
+            if (anytimeProfiling) return false;
         }
-        return true;
+        return resumeAnytimeExecution;
     }
 
     public void anytimeAct() {
@@ -1618,15 +1686,27 @@ public class TransitionSystem implements Serializable {
             do {
                 applySemanticRuleAct();
             } while (resumeAct() && getAgArch().isRunning());
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "*** ERROR in the transition system (act). "+C+"\nCreating a new C!", e);
+            C.create();
+        }
+    }
 
-//            DelayedAction da = C.getAPQ().poll();
-//            if (da != null) {
-//                ActionExec action = da.getAction();
-//
-//                C.addPendingAction(action);
-//                // We need to send a wrapper for FA to the user so that add method then calls C.addFA (which control atomic things)
-//                getAgArch().act(action);
-//            }
+    public void anytimeActProfiler() {
+        try {
+            long totalTime = 0;
+            do {
+                State previous = stepAct;
+                long begin = System.nanoTime();
+                applySemanticRuleAct();
+                long time = System.nanoTime() - begin;
+                State after = stepAct;
+                if (previous != State.SelInt || after != State.StartRC){
+                    anytimeProfiler.addTime(previous.toString(), time);
+                    totalTime += time;
+                }
+            } while (resumeAct() && getAgArch().isRunning());
+            anytimeProfiler.addTime("action", totalTime);
         } catch (Exception e) {
             logger.log(Level.SEVERE, "*** ERROR in the transition system (act). "+C+"\nCreating a new C!", e);
             C.create();
@@ -1636,9 +1716,11 @@ public class TransitionSystem implements Serializable {
     private boolean resumeAct(){
         if (stepAct == State.StartRC){
             stepAct = State.ProcAct;
-            return false;
+            iterAct++;
+//            System.out.println("Step: "+ iterAct);
+            if (anytimeProfiling) return false;
         }
-        return true;
+        return resumeAnytimeExecution;
     }
 
     // Auxiliary functions

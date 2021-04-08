@@ -4,7 +4,7 @@
  */
 
 MAS miners {
-    infrastructure: Centralised
+    infrastructure: Centralised(anytime_asynch,1)
 
     environment: mining.MiningPlanet(3,50,yes)
         // parameters: 1. environment configuration id (from 1 to 3)

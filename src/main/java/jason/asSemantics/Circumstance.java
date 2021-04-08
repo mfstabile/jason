@@ -1,23 +1,18 @@
 package jason.asSemantics;
 
+import jason.asSyntax.*;
+import jason.asSyntax.Trigger.TEOperator;
+import jason.asSyntax.Trigger.TEType;
+import jason.infra.centralised.CentralisedAgArch;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
-
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-
-import jason.asSyntax.ASSyntax;
-import jason.asSyntax.Atom;
-import jason.asSyntax.Literal;
-import jason.asSyntax.Term;
-import jason.asSyntax.Trigger;
-import jason.asSyntax.Trigger.TEOperator;
-import jason.asSyntax.Trigger.TEType;
-import jason.infra.centralised.CentralisedAgArch;
 
 public class Circumstance implements Serializable {
 
@@ -275,6 +270,10 @@ public class Circumstance implements Serializable {
 
     public boolean hasMsg() {
         return !MB.isEmpty();
+    }
+
+    public int getMsgAmount() {
+        return MB.size();
     }
 
     /** Intentions */

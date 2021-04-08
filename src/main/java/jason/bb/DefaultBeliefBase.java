@@ -1,27 +1,19 @@
 package jason.bb;
 
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Deque;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.LinkedBlockingDeque;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-
 import jason.asSemantics.Agent;
 import jason.asSemantics.Unifier;
 import jason.asSyntax.Atom;
 import jason.asSyntax.Literal;
 import jason.asSyntax.PredicateIndicator;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+
+import java.io.Serializable;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Default implementation of Jason BB.
@@ -52,7 +44,6 @@ public class DefaultBeliefBase extends BeliefBase implements Serializable {
     @Override
     public void init(Agent ag, String[] args) {
         if (ag != null) {
-            System.out.println("Creating BBlogger for " + ag.getTS().getAgArch().getAgName());
             logger = Logger.getLogger(ag.getTS().getAgArch().getAgName() + "-"+DefaultBeliefBase.class.getSimpleName());
         }
     }
@@ -109,13 +100,16 @@ public class DefaultBeliefBase extends BeliefBase implements Serializable {
         return percepts;
     }
 
-    public  void clearPerceptsSet() {
+    public int clearPerceptsSet() {
+        int clearedPercepts = 0;
         Iterator<Literal> perceptsInBB = this.getPercepts();
         while (perceptsInBB.hasNext()) {
             perceptsInBB.next();
             perceptsInBB.remove();
+            clearedPercepts++;
         }
         this.percepts = new HashSet<>();
+        return clearedPercepts;
     }
 
     @Override

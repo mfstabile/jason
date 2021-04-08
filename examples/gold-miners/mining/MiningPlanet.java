@@ -61,6 +61,10 @@ public class MiningPlanet extends jason.environment.Environment {
 
     @Override
     public boolean executeAction(String ag, Structure action) {
+        if(ag.equals("leader")){
+            return true;
+        }
+
         boolean result = false;
         try {
             if (sleep > 0) {

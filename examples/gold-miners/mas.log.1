@@ -1,0 +1,131 @@
+[BaseCentralisedMAS] Creating environment mining.MiningPlanet(3,50,yes)
+[BaseCentralisedMAS] Creating agent leader (1/1)
+[httpserver] HttpServer created http 0.0.0.0/0.0.0.0:3273
+[httpserver] context created: /
+[httpserver] context created: /agents
+[httpserver] context created: /agent-mind/no_ag
+[httpserver] context created: /df
+[leader] as2j: AgentSpeak program 'file:leader.asl' parsed successfully!
+[leader] as2j: AgentSpeak program 'jar:file:/Users/mfstabile/Doutorado/AnytimeJason/jason/build/libs/jason-2.6.2.jar!/asl/kqmlPlans.asl' parsed successfully!
+[leader] Doing (add) brf for kqml::clear_source_self([],[])[source(self)]
+[leader] brf added kqml::clear_source_self([],[])[source(self)]
+[BaseCentralisedMAS] Creating agent miner1 (1/4)
+[security] X509Certificate: Alg:{0}, Serial:{1}, Subject:{2}, Issuer:{3}, Key type:{4}, Length:{5,number,#}, Cert Id:{6,number,#}, Valid from:{7}, Valid until:{8}
+[miner1] as2j: AgentSpeak program 'file:miner.asl' parsed successfully!
+[miner1] Doing (add) brf for free[source(self)]
+[miner1] brf added free[source(self)]
+[miner1] Added event +free[source(self)], events = [+free[source(self)]]
+[miner1] Doing (add) brf for last_dir(null)[source(self)]
+[miner1] brf added last_dir(null)[source(self)]
+[miner1] as2j: AgentSpeak program 'jar:file:/Users/mfstabile/Doutorado/AnytimeJason/jason/build/libs/jason-2.6.2.jar!/asl/kqmlPlans.asl' parsed successfully!
+[miner1] Doing (add) brf for kqml::clear_source_self([],[])[source(self)]
+[miner1] brf added kqml::clear_source_self([],[])[source(self)]
+[BaseCentralisedMAS] Creating agent miner2 (2/4)
+[BaseCentralisedMAS] Creating agent miner3 (3/4)
+[BaseCentralisedMAS] Creating agent miner4 (4/4)
+[BaseCentralisedMAS] Created 5 agents.
+[BaseCentralisedMAS] Creating controller jason.control.ExecutionControlGUI
+[miner1] percepts: [gsize(3,35,35), depot(3,16,16), pos(1,0), cell(1,0,ally), cell(1,1,gold)]
+[miner2] percepts: [gsize(3,35,35), depot(3,16,16), pos(20,0), cell(20,0,ally)]
+[leader] percepts: [gsize(3,35,35), depot(3,16,16)]
+[miner4] percepts: [gsize(3,35,35), depot(3,16,16), pos(20,20), cell(19,19,obstacle), cell(20,20,gold), cell(20,20,ally), cell(20,21,gold)]
+[miner3] percepts: [gsize(3,35,35), depot(3,16,16), pos(6,26), cell(5,25,obstacle), cell(6,25,obstacle), cell(6,26,ally), cell(7,25,obstacle), cell(7,26,obstacle), cell(7,27,obstacle)]
+[miner3] *** ERROR in the transition system (sense). Circumstance:
+  E =[+free[source(self)]]
+  I =[]
+  A =null
+  MB=[]
+  RP=null
+  AP=null
+  SE=null
+  SO=null
+  SI=null
+  AI=null
+  AE=null
+  PA={}
+  PI={}
+  FA=[].
+Creating a new C!
+java.lang.NullPointerException
+	at jason.asSemantics.Agent.anytimeBUFProfiler(Agent.java:938)
+	at jason.asSemantics.TransitionSystem.anytimeSenseProfiler(TransitionSystem.java:1613)
+	at jason.infra.centralised.CentralisedAgArchAnytimeAsynchronous.lambda$new$3(CentralisedAgArchAnytimeAsynchronous.java:249)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:264)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1128)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:628)
+	at java.base/java.lang.Thread.run(Thread.java:830)
+
+[leader] Added event +gsize(3,35,35)[source(percept),source(percept)], events = [+gsize(3,35,35)[source(percept),source(percept)]]
+[miner1] Added event +gsize(3,35,35)[source(percept),source(percept)], events = [+free[source(self)], +gsize(3,35,35)[source(percept),source(percept)]]
+[miner4] *** ERROR in the transition system (sense). Circumstance:
+  E =[+free[source(self)]]
+  I =[]
+  A =null
+  MB=[]
+  RP=null
+  AP=null
+  SE=null
+  SO=null
+  SI=null
+  AI=null
+  AE=null
+  PA={}
+  PI={}
+  FA=[].
+Creating a new C!
+java.lang.NullPointerException
+	at jason.asSemantics.Agent.anytimeBUFProfiler(Agent.java:938)
+	at jason.asSemantics.TransitionSystem.anytimeSenseProfiler(TransitionSystem.java:1613)
+	at jason.infra.centralised.CentralisedAgArchAnytimeAsynchronous.lambda$new$3(CentralisedAgArchAnytimeAsynchronous.java:249)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:264)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1128)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:628)
+	at java.base/java.lang.Thread.run(Thread.java:830)
+
+[miner2] *** ERROR in the transition system (sense). Circumstance:
+  E =[+free[source(self)]]
+  I =[]
+  A =null
+  MB=[]
+  RP=null
+  AP=null
+  SE=null
+  SO=null
+  SI=null
+  AI=null
+  AE=null
+  PA={}
+  PI={}
+  FA=[].
+Creating a new C!
+java.lang.NullPointerException
+	at jason.asSemantics.Agent.anytimeBUFProfiler(Agent.java:938)
+	at jason.asSemantics.TransitionSystem.anytimeSenseProfiler(TransitionSystem.java:1613)
+	at jason.infra.centralised.CentralisedAgArchAnytimeAsynchronous.lambda$new$3(CentralisedAgArchAnytimeAsynchronous.java:249)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:264)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1128)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:628)
+	at java.base/java.lang.Thread.run(Thread.java:830)
+
+[miner1] Added event +cell(1,0,ally)[source(percept)], events = [+free[source(self)], +gsize(3,35,35)[source(percept),source(percept)], +cell(1,0,ally)[source(percept)]]
+[miner1] Added event +cell(1,1,gold)[source(percept)], events = [+free[source(self)], +gsize(3,35,35)[source(percept),source(percept)], +cell(1,0,ally)[source(percept)], +cell(1,1,gold)[source(percept)]]
+[leader] Selected event +gsize(3,35,35)[source(percept),source(percept)]
+[miner1] Selected event +free[source(self)]
+[miner1] option for +free[source(self)] is plan p__15[source(self),url("file:miner.asl")] +free : last_checked(X,Y) -- with unification {}
+[leader] option for +gsize(3,35,35)[source(percept),source(percept)] is plan quads[atomic,source(self),url("file:leader.asl")] +gsize(S,W,H) : null -- with unification {S=3, W=35, H=35}
+[miner1]      | no candidate belief for last_checked(X,Y) with {}
+[leader]      quads[atomic,source(self),url("file:leader.asl")] is applicable with unification {S=3, W=35, H=35}
+[miner1]      p__15[source(self),url("file:miner.asl")] is not applicable
+[miner1] option for +free[source(self)] is plan p__16[source(self),url("file:miner.asl")] +free : quadrant(X1,Y1,X2,Y2) -- with unification {}
+[miner1]      | no candidate belief for quadrant(X1,Y1,X2,Y2) with {}
+[miner1]      p__16[source(self),url("file:miner.asl")] is not applicable
+[leader] Selected option (@quads[atomic,source(self),url("file:leader.asl")] +gsize(S,W,H) <- .print("Defining quadrants for ",W,"x",H," simulation ",S); +quad(S,1,0,0,((W div 2)-1),((H div 2)-1)); +quad(S,2,(W div 2),0,(W-1),((H div 2)-1)); +quad(S,3,0,(H div 2),((W div 2)-1),(H-1)); +quad(S,4,(W div 2),(H div 2),(W-1),(H-1)); .print("Finished all quadrs for ",S).,{S=3, W=35, H=35}) for event +gsize(3,35,35)[source(percept),source(percept)]
+[miner1] option for +free[source(self)] is plan p__17[source(self),url("file:miner.asl")] +free : null -- with unification {}
+[miner1]      p__17[source(self),url("file:miner.asl")] is applicable with unification {}
+[miner1] Selected option (@p__17[source(self),url("file:miner.asl")] +free <- !wait_for_quad.,{}) for event +free[source(self)]
+[leader] Defining quadrants for 35x35 simulation 3
+[miner1] Selected intention intention 2: 
+    +free[source(self)] <- ... !wait_for_quad / {}
+
+[leader] Informing controller that I finished a reasoning cycle 0. Breakpoint is false
+[miner1] Informing controller that I finished a reasoning cycle 0. Breakpoint is false

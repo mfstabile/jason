@@ -7,6 +7,8 @@ import jason.asSemantics.*;
 import jason.asSyntax.Atom;
 import jason.asSyntax.Literal;
 import jason.mas2j.ClassParameters;
+import jason.profiling.AnytimeCompiler;
+import jason.profiling.AnytimeProfiler;
 import jason.runtime.RuntimeServices;
 import jason.runtime.RuntimeServicesFactory;
 import jason.runtime.Settings;
@@ -49,12 +51,14 @@ public class CentralisedAgArchAnytimeAsynchronous extends CentralisedAgArch impl
     private Queue<Message>     mbox    = new ConcurrentLinkedQueue<>();
     protected transient Logger logger  = Logger.getLogger(CentralisedAgArchAnytimeAsynchronous.class.getName());
 
-    Callable<Boolean> senseRunnable = () -> {sense();return true;};
-    Callable<Boolean> deliberateRunnable = () -> {deliberate();return true;};
-    Callable<Boolean> actRunnable = () -> {act();return true;};
 
-    ExecutorService executor = Executors.newFixedThreadPool(3);
+    ExecutorService executor = Executors.newFixedThreadPool(1);
     ActionExec defaultAction;
+    private int responseTimeMilis;
+    public boolean isProfiling = true;
+    private AnytimeProfiler ap;
+    private AnytimeCompiler ac;
+    int messagesReceivedThisCycle = 0;
 
     private static List<MsgListener> msgListeners = null;
     public static void addMsgListener(MsgListener l) {
@@ -94,6 +98,7 @@ public class CentralisedAgArchAnytimeAsynchronous extends CentralisedAgArch impl
             }
 
             setLogger();
+
         } catch (Exception e) {
             running = false;
             throw e; //new JasonException("as2j: error creating the agent class! - "+e.getMessage(), e);
@@ -110,9 +115,25 @@ public class CentralisedAgArchAnytimeAsynchronous extends CentralisedAgArch impl
             createCustomArchs(agArchClasses);
 
             setLogger();
+
         } catch (Exception e) {
             running = false;
             throw new JasonException("as2j: error creating the agent class! - ", e);
+        }
+    }
+
+    public void createProfiler(){
+        ap = AnytimeProfiler.createProfiler(getAgName());
+        getTS().anytimeProfiler = ap;
+        isProfiling = !ap.isLoaded();
+        getTS().anytimeProfiling = isProfiling;
+
+        if (!isProfiling) {
+            System.out.println("not profiling");
+            ac = new AnytimeCompiler(ap);
+            ac.calculateExecutionTimes(responseTimeMilis);
+        }else{
+            System.out.println("is profiling");
         }
     }
 
@@ -135,7 +156,6 @@ public class CentralisedAgArchAnytimeAsynchronous extends CentralisedAgArch impl
             f = f.getNextAgArch();
         }
     }
-
 
     public void setLogger() {
         logger = Logger.getLogger(CentralisedAgArchAnytimeAsynchronous.class.getName() + "." + getAgName());
@@ -187,6 +207,15 @@ public class CentralisedAgArchAnytimeAsynchronous extends CentralisedAgArch impl
         this.defaultAction = defaultAction;
     }
 
+//    public int getResponseTimeMilis() {
+//        return responseTimeMilis;
+//    }
+
+    public void setResponseTimeMilis(int responseTimeMilis) {
+        this.responseTimeMilis = responseTimeMilis;
+        System.out.println("new responseTimeMilis: "+ this.responseTimeMilis);
+    }
+
     private transient Thread myThread = null;
     public void setThread(Thread t) {
         myThread = t;
@@ -203,56 +232,98 @@ public class CentralisedAgArchAnytimeAsynchronous extends CentralisedAgArch impl
         return running;
     }
 
-    protected void sense() {
+    Callable<Boolean> senseRunnable = () -> {
         TransitionSystem ts = getTS();
-
-        int i = 0;
-        do {
-            ts.anytimeSense(); // must run at least once, so that perceive() is called
-        } while (running && ++i < cyclesSense && !ts.canSleepSense());
-    }
-
-    protected void deliberate() {
+        ts.anytimeSense();
+        return true;
+    };
+    Callable<Boolean> deliberateRunnable = () -> {
         TransitionSystem ts = getTS();
-        int i = 0;
-        while (running && i++ < cyclesDeliberate && !ts.canSleepDeliberate()) {
-            ts.anytimeDeliberate();
-        }
-    }
-
-    protected void act() {
+        ts.anytimeDeliberate();
+        return true;
+    };
+    Callable<Boolean> actRunnable = () -> {
         TransitionSystem ts = getTS();
+        ts.anytimeAct();
+        return true;
+    };
 
-        int i = 0;
-        int ca = cyclesAct;
-        if (ca != 1) { // not the default value, limit the value to the number of intentions
-            ca = Math.min(cyclesAct, ts.getC().getNbRunningIntentions());
-            if (ca == 0)
-                ca = 1;
-        }
-        while (running && i++ < ca && !ts.canSleepAct()) {
-            ts.anytimeAct();
+    Callable<Boolean> senseRunnableProfiler = () -> {
+        TransitionSystem ts = getTS();
+        ts.anytimeSenseProfiler();
+        return true;
+    };
+    Callable<Boolean> deliberateRunnableProfiler = () -> {
+        TransitionSystem ts = getTS();
+        ts.anytimeDeliberateProfiler();
+        return true;
+    };
+    Callable<Boolean> actRunnableProfiler = () -> {
+        TransitionSystem ts = getTS();
+        ts.anytimeActProfiler();
+        return true;
+    };
+
+
+    protected void profilingReasoningCycle() {
+        getTS().anytimeProfiling = true;
+        getTS().setResumeAnytimeExecution(true);
+        try {
+            Future<Boolean> futureSense = executor.submit(senseRunnableProfiler);
+            futureSense.get();
+            Future<Boolean> futureDeliberate = executor.submit(deliberateRunnableProfiler);
+            futureDeliberate.get();
+            Future<Boolean> futureAct = executor.submit(actRunnableProfiler);
+            futureAct.get();
+
+            long begin = System.nanoTime();
+
+            DelayedAction da = getTS().getC().getAPQ().poll();
+            if (da != null) {
+                ActionExec action = da.getAction();
+                getTS().getC().addPendingAction(action);
+                act(action);
+
+                long time = System.nanoTime() - begin;
+                getTS().anytimeProfiler.addTime("executeExternal", time);
+
+            }
+            ap.addOccurrence("messages",messagesReceivedThisCycle);
+            messagesReceivedThisCycle = 0;
+
+            getTS().anytimeProfiler.saveToFile();
+
+
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
         }
     }
 
     protected void reasoningCycle() {
-
+        getTS().anytimeProfiling = false;
         //get time
+        getTS().setResumeAnytimeExecution(true);
 
-        Future<Boolean> future = executor.submit(senseRunnable);
-        Future<Boolean> future2 = executor.submit(deliberateRunnable);
-        Future<Boolean> future3 = executor.submit(actRunnable);
+//        Future<Boolean> futureSense = executor.submit(senseRunnable);
+//        Future<Boolean> futureDeliberate = executor.submit(deliberateRunnable);
+//        Future<Boolean> futureAct = executor.submit(actRunnable);
 
-        //sleep time - something
-
+//        sleep time - something
+//        try {
+//            Thread.sleep(responseTimeMilis);
+//        } catch (InterruptedException e) {
+//            e.printStackTrace();
+//        }
         //send message
-
-        //
+//        getTS().setResumeAnytimeExecution(false);
 
         try {
-            future.get();
-            future2.get();
-            future3.get();
+            Future<Boolean> futureSense = executor.submit(senseRunnable);
+            futureSense.get();
+            Future<Boolean> futureDeliberate = executor.submit(deliberateRunnable);
+            futureDeliberate.get();
+            Future<Boolean> futureAct = executor.submit(actRunnable);
+            futureAct.get();
 
             DelayedAction da = getTS().getC().getAPQ().poll();
             if (da != null) {
@@ -266,9 +337,7 @@ public class CentralisedAgArchAnytimeAsynchronous extends CentralisedAgArch impl
 //                act(defaultAction);
 //            }
 
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        } catch (ExecutionException e) {
+        } catch (InterruptedException | ExecutionException e) {
             e.printStackTrace();
         }
     }
@@ -278,7 +347,8 @@ public class CentralisedAgArchAnytimeAsynchronous extends CentralisedAgArch impl
         while (running) {
             if (ts.getSettings().isSync()) {
                 waitSyncSignal();
-                reasoningCycle();
+                profilingReasoningCycle();
+//                reasoningCycle();
                 boolean isBreakPoint = false;
                 try {
                     isBreakPoint = ts.getC().getSelectedOption().getPlan().hasBreakpoint();
@@ -289,9 +359,8 @@ public class CentralisedAgArchAnytimeAsynchronous extends CentralisedAgArch impl
                 informCycleFinished(isBreakPoint, getCycleNumber());
             } else {
                 getFirstAgArch().incCycleNumber(); // should not increment in case of sync execution
-                reasoningCycle();
-                if (ts.canSleep())
-                    sleep();
+                profilingReasoningCycle();
+//                reasoningCycle();
             }
         }
         logger.fine("I finished!");
@@ -300,7 +369,7 @@ public class CentralisedAgArchAnytimeAsynchronous extends CentralisedAgArch impl
     private transient Object sleepSync = new Object();
     private int    sleepTime = 50;
 
-    public static final int MAX_SLEEP = 1000;
+    public static final int MAX_SLEEP = 100;
 
     public void sleep() {
         try {
@@ -393,6 +462,7 @@ public class CentralisedAgArchAnytimeAsynchronous extends CentralisedAgArch impl
         Message im = mbox.poll();
         while (im != null && getTS().resumeSense()) {
             C.addMsg(im);
+            messagesReceivedThisCycle++;
             if (logger.isLoggable(Level.FINE)) logger.fine("received message: " + im);
             im = mbox.poll();
         }
@@ -419,7 +489,8 @@ public class CentralisedAgArchAnytimeAsynchronous extends CentralisedAgArch impl
     }
 
     public boolean canSleep() {
-        return mbox.isEmpty() && isRunning();
+        return false;
+//        return mbox.isEmpty() && isRunning();
     }
 
     private transient Object  syncMonitor = new Object();

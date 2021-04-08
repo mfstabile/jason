@@ -1,5 +1,7 @@
 // leader agent
 
+@default +default<- do(skip).
+
 /* quadrant allocation */
 
 @quads[atomic]

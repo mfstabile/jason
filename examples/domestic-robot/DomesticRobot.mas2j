@@ -5,7 +5,7 @@
 */
 
 MAS domestic_robot {
-    infrastructure: Centralised(anytime_asynch)
+    infrastructure: Centralised(anytime_asynch,1000,70)
     environment: HouseEnv(gui) // use "nogui" as parameter to not show the GUI
     agents: robot;
             owner;

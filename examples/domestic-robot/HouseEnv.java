@@ -6,6 +6,7 @@ import java.util.logging.Logger;
 public class HouseEnv extends Environment {
 
     // common literals
+    public static final Literal w  = Literal.parseLiteral("wait");
     public static final Literal of  = Literal.parseLiteral("open(fridge)");
     public static final Literal clf = Literal.parseLiteral("close(fridge)");
     public static final Literal gb  = Literal.parseLiteral("get(beer)");

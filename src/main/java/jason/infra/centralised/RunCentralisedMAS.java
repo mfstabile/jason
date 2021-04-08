@@ -621,14 +621,12 @@ public class RunCentralisedMAS extends BaseCentralisedMAS implements RunCentrali
     private void createAnytimeAgsThreads() {
         System.out.println("Creating Anytime Agents");
 
-        if (project.getInfrastructure().hasParameters()) {
-            if (project.getInfrastructure().getParametersArray().length > 2) {
-//                cyclesSense      = Integer.parseInt(project.getInfrastructure().getParameter(1));
-//                cyclesDeliberate = Integer.parseInt(project.getInfrastructure().getParameter(2));
-//                cyclesAct        = Integer.parseInt(project.getInfrastructure().getParameter(3));
-            } else if (project.getInfrastructure().getParametersArray().length > 1) {
-//                cyclesSense = cyclesDeliberate = cyclesAct = Integer.parseInt(project.getInfrastructure().getParameter(1));
-            }
+        int responseTimeMilis = 3000;
+        try {
+            responseTimeMilis = Integer.parseInt(project.getInfrastructure().getParameter(1));
+            System.out.println("responseTimeMilis: "+ responseTimeMilis);
+        } catch (NumberFormatException e){
+            logger.severe("Response time and/or Probability distribution threshold not properly defined. Using default values");
         }
 
         for (CentralisedAgArch ag : ags.values()) {
@@ -645,14 +643,14 @@ public class RunCentralisedMAS extends BaseCentralisedMAS implements RunCentrali
 
             try {
                 Term def = ag.getTS().getAg().getPL().get("default").getBody().getBodyTerm();
-
                 Literal body = (Literal) def;
-                Intention curInt = new Intention();
-                ActionExec ae = new ActionExec(body, curInt);
+                ActionExec ae = new ActionExec(body, null);
                 ((CentralisedAgArchAnytimeAsynchronous) ag).setDefaultAction(ae);
             }catch (Exception e){
                 logger.log(Level.SEVERE, ag.getAgName() + " - Default action not loaded correctly");
             }
+            ((CentralisedAgArchAnytimeAsynchronous) ag).setResponseTimeMilis(responseTimeMilis);
+            ((CentralisedAgArchAnytimeAsynchronous) ag).createProfiler();
         }
 
 

@@ -15,6 +15,8 @@ calc_new_y(AgY,QuadY2,QuadY2) :- AgY+2 > QuadY2.
 calc_new_y(AgY,_,Y) :- Y = AgY+2.
 
 
+
+@default +default<- do(skip).
 /* plans for sending the initial position to leader */
 
 +gsize(S,_,_) : true // S is the simulation Id
@@ -22,7 +24,7 @@ calc_new_y(AgY,_,Y) :- Y = AgY+2.
 +!send_init_pos(S) : pos(X,Y)
   <- .send(leader,tell,init_pos(S,X,Y)).
 +!send_init_pos(S) : not pos(_,_) // if I do not know my position yet
-  <- .wait("+pos(X,Y)", 500);     // wait for it and try again
+  <- .wait("+pos(X,Y)");     // wait for it and try again
      !!send_init_pos(S).
 
 /* plans for wandering in my quadrant when I'm free */
@@ -35,7 +37,7 @@ calc_new_y(AgY,_,Y) :- Y = AgY+2.
 +!wait_for_quad : free & quadrant(_,_,_,_)
    <- -+free.
 +!wait_for_quad : free
-   <- .wait("+quadrant(X1,Y1,X2,Y2)", 500);
+   <- .wait("+quadrant(X1,Y1,X2,Y2)");
       !!wait_for_quad.
 +!wait_for_quad : not free
    <- .print("No longer free while waiting for quadrant.").
@@ -44,32 +46,32 @@ calc_new_y(AgY,_,Y) :- Y = AgY+2.
 
 // if I am around the upper-left corner, move to upper-right corner
 +around(X1,Y1) : quadrant(X1,Y1,X2,Y2) & free
-  <- .print("in Q1 to ",X2,"x",Y1);
+  <- //.print("in Q1 to ",X2,"x",Y1);
      !prep_around(X2,Y1).
 
 // if I am around the bottom-right corner, move to upper-left corner
 +around(X2,Y2) : quadrant(X1,Y1,X2,Y2) & free
-  <- .print("in Q4 to ",X1,"x",Y1);
+  <- //.print("in Q4 to ",X1,"x",Y1);
      !prep_around(X1,Y1).
 
 // if I am around the right side, move to left side two lines bellow
 +around(X2,Y) : quadrant(X1,Y1,X2,Y2) & free
   <- ?calc_new_y(Y,Y2,YF);
-     .print("in Q2 to ",X1,"x",YF);
+     //.print("in Q2 to ",X1,"x",YF);
      !prep_around(X1,YF).
 
 // if I am around the left side, move to right side two lines bellow
 +around(X1,Y) : quadrant(X1,Y1,X2,Y2) & free
   <- ?calc_new_y(Y,Y2,YF);
-     .print("in Q3 to ", X2, "x", YF);
+     //.print("in Q3 to ", X2, "x", YF);
      !prep_around(X2,YF).
 
 // last "around" was none of the above, go back to my quadrant
 +around(X,Y) : quadrant(X1,Y1,X2,Y2) & free & Y <= Y2 & Y >= Y1
-  <- .print("in no Q, going to X1");
+  <- //.print("in no Q, going to X1");
      !prep_around(X1,Y).
 +around(X,Y) : quadrant(X1,Y1,X2,Y2) & free & X <= X2 & X >= X1
-  <- .print("in no Q, going to Y1");
+  <- //.print("in no Q, going to Y1");
      !prep_around(X,Y1).
 
 +around(X,Y) : quadrant(X1,Y1,X2,Y2)

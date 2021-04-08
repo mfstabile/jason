@@ -36,15 +36,17 @@ repositories {
     }
 }
 
-/*configurations {
-    umljavadoc  // see http://www.umlgraph.org/doc/indexw.html
-}*/
+configurations {
+//    umljavadoc  // see http://www.umlgraph.org/doc/indexw.html
+    extraLibs
+}
 
 
 dependencies {
     compile group: 'net.sf.ingenias', name: 'jade', version: '4.3'
     //compile group: 'com.tilab.jade', name: 'jade', version: '4.4.0'
-
+    extraLibs group: 'org.apache.commons', name: 'commons-math3', version: '3.6.1'
+    extraLibs 'com.google.code.gson:gson:2.8.6'
     //compile group: 'org.jacamo',     name: 'cartago', version: '2.5'
     //compile group: 'org.jacamo',     name: 'jaca',    version: '2.5'
 
@@ -95,6 +97,9 @@ jar {
     from('src') {
         include '/test/jason/inc/**/*.asl'
         include '/test/jason/**/*.mas2j'
+    }
+    from{
+        configurations.extraLibs.collect { it.isDirectory() ? it : zipTree(it) }
     }
     /*doFirst {
         Properties props = new Properties()
